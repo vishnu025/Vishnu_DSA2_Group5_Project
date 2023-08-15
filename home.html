@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <link rel="icon" type="image/png" href="/static/pollution.png" />
+
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
+    <title>PM2.5 Predictor</title>
+
+    <link rel="stylesheet" type="text/css" href="/static/css/home.css">
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+
+                                        <!-- Included AJAX for asynchronous reloading -->
+    <script>
+        $(document).ready(function () {
+            $("#async_reload_get").click(function (event) {
+                event.preventDefault();
+                $.ajax({
+                    url: "/readings",
+                    type: "GET",
+                    success: function (response) {
+                        $("#async").empty();
+                        $("#async").html(response);
+                    }
+                });
+            });
+
+            $("#async_reload_post").click(function (event) {
+                event.preventDefault();
+                $.ajax({
+                    url: "/readings",
+                    type: "POST",
+                    data: $('form').serialize(),
+                    success: function (response) {
+                        $("#async").empty();
+                        $("#async").html(response);
+                    }
+                });
+            });
+            $("#async_reload_user_post").click(function (event) {
+                event.preventDefault();
+                $.ajax({
+                    url: "/userreadings",
+                    type: "POST",
+                    data: $('form').serialize(),
+                    success: function (response) {
+                        $("#async").empty();
+                        $("#async").html(response);
+                    }
+                });
+            });
+        });
+    </script>
+
+                                    <!-- javaScript for hiding and revealing division a small 'podikkai' -->
+    <script>
+        function hide_division() {
+            document.getElementById('prediction_container').style.display = 'none';
+        }
+
+        function reveal_division() {
+            document.getElementById('prediction_container').style.display = 'block';
+        }
+    </script>
+
+                                                            <!-- JS for map to work -->
+
+    <script type="text/javascript" charset="utf-8">
+        (function (w, d, t, f) {
+            w[f] = w[f] || function (c, k, n) {
+                s = w[f], k = s['k'] = (s['k'] || (k ? ('&k=' + k) : '')); s['c'] =
+                    c = (c instanceof Array) ? c : [c]; s['n'] = n = n || 0; L = d.createElement(t), e = d.getElementsByTagName(t)[0];
+                L.async = 1; L.src = '//feed.aqicn.org/feed/' + (c[n].city) + '/' + (c[n].lang || '') + '/feed.v1.js?n=' + n + k;
+                e.parentNode.insertBefore(L, e);
+            };
+        })(window, document, 'script', '_aqiFeed');    
+    </script>
+
+
+
+</head>
+
+<body id="async" class=" bg-secondary">
+
+    <div class="bg-secondary">
+
+        <div class="container_heading">
+            <img id='banner' class="img-fluid" src="/static/pexels-pixabay-39553.jpg" alt="No image hehe">
+            <h1>PM2.5 predictor</h1>
+        </div>
+        <div class='container bg-secondary rounded text-white text-justify text-center '>
+            <p class=" text-white">
+
+            <h5>What is PM2.5?</h5>
+            PM2.5 refers to atmospheric particulate matter (PM) that have a diameter of less than 2.5 micrometers, which
+            is about 3% the diameter of a human hair. These tiny particles can be inhaled and cause serious health
+            problems. Some particles less than 10 micrometers in diameter can get deep into your lungs and some may even
+            get into your bloodstream. Of these, particles less than 2.5 micrometers in diameter, also known as fine
+            particles or PM 2.5, pose the greatest risk to health. PM2.5 is produced from the chemical reaction between
+            the atmosphere and fuel combustion. It's especially found in motor vehicles. Other sources of PM2.5
+            include sea spray and wildfires. Fine particulate matter is found both indoors and outdoors. The harmful
+            effects of PM2.5 include eye, nose, throat and lung irritation, coughing, sneezing, runny nose and shortness
+            of breath. To reduce exposure to PM2.5, you can use air quality alerts to protect yourself and others when
+            PM reaches harmful levels.
+            <p> <br></p>
+            </p>
+        </div>
+                                               <!-- Satellite prediction code block -->
+
+        <div id="import_n_prediction" class='container rounded' >
+            <h3 class="text-center">Satellite data</h3>
+            <div class="row" >
+                <div class="table-responsive rounded col-9" >
+                    <table class="table table-light">
+                        <thead>
+                            <tr class="text-center" >
+                                <th scope="row" class="text-nowrap">Mode of input</th>
+                                <th scope="col">Humidity</th>
+                                <th scope="col">Mean Temperature</th>
+                                <th scope="col">SO2 column number density</th>
+                                <th scope="col">SO2 column number density Air Mass Factor</th>
+                                <th scope="col">SO2 slant column number density</th>
+                                <th scope="col">SO2 cloud fraction</th>
+                                <th scope="col">SO2 sensor azimuth angle</th>
+                                <th scope="col">SO2 sensor zenith angle</th>
+                                <th scope="col">SO2 solar azimuth angle</th>
+                                <th scope="col">SO2 solar zenith angle</th>
+                                <th scope="col">SO2 column number density 15km</th>
+                                <th scope="col">CO column number density</th>
+                                <th scope="col">CO_H2O column number density</th>
+                                <th scope="col">CO cloud height</th>
+                                <th scope="col">CO sensor altitude</th>
+                                <th scope="col">NO2 column density</th>
+                                <th scope="col">NO2 tropospheric column number density</th>
+                                <th scope="col">NO2 stratoshperic column number density</th>
+                                <th scope="col">NO2 slant column number density</th>
+                                <th scope="col">NO2 tropopause pressure</th>
+                                <th scope="col">NO2 absorbing aerosol index</th>
+                                <th scope="col">NO2 cloud fraction</th>
+                                <th scope="col">NO2 sensor altitude</th>
+                                <th scope="col">Formaldehyde column number density</th>
+                                <th scope="col">Formaldehyde column number density Air Mass Factor</th>
+                                <th scope="col">Formaldehyde slant column number density</th>
+                                <th scope="col">Formaldehyde cloud fraction</th>
+                                <th scope="col">UV aerosol absorbing index</th>
+                                <th scope="col">UV aerosol sensor altitude</th>
+                                <th scope="col">O3 column number density</th>
+                                <th scope="col">O3 column number density Air Mass Factor</th>
+                                <th scope="col">O3 slant column number density</th>
+                                <th scope="col">O3 effective temperature</th>
+                                <th scope="col">O3 cloud fraction</th>
+                            </tr>
+                        </thead>
+
+
+                        <tbody>
+                            <tr>
+                                <th scope="row">Satellite input</th>
+                                <td>{{r4 or '0.00000000000000'}}</td>
+                                <td>{{r5 or '0.00000000000000'}}</td>
+                                <td>{{r6 or '0.00000000000000'}}</td>
+                                <td>{{r7 or '0.00000000000000'}}</td>
+                                <td>{{r8 or '0.00000000000000'}}</td>
+                                <td>{{r9 or '0.00000000000000'}}</td>
+                                <td>{{r10 or '0.00000000000000'}}</td>
+                                <td>{{r11 or '0.00000000000000'}}</td>
+                                <td>{{r12 or '0.00000000000000'}}</td>
+                                <td>{{r13 or '0.00000000000000'}}</td>
+                                <td>{{r14 or '0.00000000000000'}}</td>
+                                <td>{{r15 or '0.00000000000000'}}</td>
+                                <td>{{r16 or '0.00000000000000'}}</td>
+                                <td>{{r17 or '0.00000000000000'}}</td>
+                                <td>{{r18 or '0.00000000000000'}}</td>
+                                <td>{{r19 or '0.00000000000000'}}</td>
+                                <td>{{r20 or '0.00000000000000'}}</td>
+                                <td>{{r21 or '0.00000000000000'}}</td>
+                                <td>{{r22 or '0.00000000000000'}}</td>
+                                <td>{{r23 or '0.00000000000000'}}</td>
+                                <td>{{r24 or '0.00000000000000'}}</td>
+                                <td>{{r25 or '0.00000000000000'}}</td>
+                                <td>{{r26 or '0.00000000000000'}}</td>
+                                <td>{{r27 or '0.00000000000000'}}</td>
+                                <td>{{r28 or '0.00000000000000'}}</td>
+                                <td>{{r29 or '0.00000000000000'}}</td>
+                                <td>{{r30 or '0.00000000000000'}}</td>
+                                <td>{{r31 or '0.00000000000000'}}</td>
+                                <td>{{r32 or '0.00000000000000'}}</td>
+                                <td>{{r33 or '0.00000000000000'}}</td>
+                                <td>{{r34 or '0.00000000000000'}}</td>
+                                <td>{{r35 or '0.00000000000000'}}</td>
+                                <td>{{r36 or '0.00000000000000'}}</td>
+                                <td>{{r37 or '0.00000000000000'}}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+
+
+
+
+                                 <!-- Satellite predictior's predicted value division -->
+
+                <div class="table-responsive rounded col-3 border-primary" id="prediction_container">
+                    <table class="table table-light" >
+                        <thead>
+                            <tr class="text-center ">
+                                <th scope="col">Predicted<br>PM2.5</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="table-light">
+                                <td>{{prediction or "Click 'Get Readings' to collect"}} {{noVal}}
+                                    </th>
+                            </tr>
+                        </tbody>
+                    </table>
+                                            <!-- Satellite predictor's condition level depiction  -->
+                    <div>
+                        {% if value2 %}
+                        {% if value2 >= 0 and value2 <= 12.0 %} <div class="text-center rounded-pill text-white" style="background:green">Good</div>
+                        {% elif value2 > 12.1 and value2 <=44 %} <div class="text-center rounded-pill" style="color: yellow; font-size: 25px; font-weight: bold;"> <img style="height: 95px; border: 95px;" src="/static/happy.png"> Satisfactory</div>
+                        {% elif value2 > 44.1 and value2 <=55.4 %} <div class="text-center rounded-pill "style="color: orange; font-size: 25px; font-weight: bold;"> <img style="height: 95px; border: 95px;"src="/static/boy.png"> Moderate</div>                   
+                        {% elif value2 > 55.5 and value2 <=150.4 %} <div class="text-center rounded-pill " style="color: red; font-size: 25px; font-weight: bold;"><img style="height: 95px; border: 95px;" src="/static/medical-mask.png"> Poor</div>
+                        {% elif value2 > 150.5 and value2 <=250.4 %} <div class="text-center rounded-pill text-white"style="background:brown">Severe</div>
+                        {% else %}
+                        <img src="" alt="Easter Egg found 🥚🍳">
+                        {% endif %}
+                        {% endif %}
+                    </div>
+
+                </div>
+            </div>
+
+                          
+
+            <div id="button_container" class="text-center ">
+                <div>
+                    <form action="/readings" method="GET">
+                        <button id="async_reload_get" class="btn btn-primary" type="submit" onclick="hide_division()">Get
+                            Readings</button>
+                    </form>
+                </div>
+                <div>
+                    <form action="/readings">
+                        <button id="async_reload_post" class="btn btn-success" type="submit"
+                            onclick="reveal_division()">Predict</button>
+                    </form>
+                </div>
+            </div>
+
+        </div>
+                                             <!-- User prediction code block -->
+        <div class="container rounded" id="user_modal_container">
+            <h3 style="padding-top: 20px; padding-bottom: 20px;" class="text-center">Have own readings? click on Launch</h3>
+            <div class="container row ">
+                <div class="table-responsive rounded col-6">      
+
+                    <table class="table">
+                        <thead class="text-center">
+                        <tr id="th_custom_user">
+                                <th scope="col">Mode of Input</th>
+                                <th scope="col">Humidity</th>
+                                <th scope="col">Mean Temp</th>
+                                <th scope="col">SO2 column No. density</th>
+                                <th scope="col">SO2 column No. density AMF</th>
+                                <th scope="col">SO2 slant column No. density</th>
+                                <th scope="col">SO2 cloud fraction</th>
+                                <th scope="col">SO2 sensor azimuth angle</th>
+                                <th scope="col">SO2 sensor zenith angle</th>
+                                <th scope="col">SO2 solar azimuth angle</th>
+                                <th scope="col">SO2 solar zenith angle</th>
+                                <th scope="col">SO2 column No. density 15km</th>
+                                <th scope="col">CO column No. density</th>
+                                <th scope="col">CO_H2O column No. density</th>
+                                <th scope="col">CO cloud height</th>
+                                <th scope="col">CO sensor altitude</th>
+                                <th scope="col">NO2 column density</th>
+                                <th scope="col">NO2 tropo column No. density</th>
+                                <th scope="col">NO2 strato column No. density</th>
+                                <th scope="col">NO2 slant column No. density</th>
+                                <th scope="col">NO2 tropopause pressure</th>
+                                <th scope="col">NO2 absorbing aerosol index</th>
+                                <th scope="col">NO2 cloud fraction</th>
+                                <th scope="col">NO2 sensor altitude</th>
+                                <th scope="col">HCHO column No. density</th>
+                                <th scope="col">HCHO column No. density AMF</th>
+                                <th scope="col">HCHO slant column No. density</th>
+                                <th scope="col">HCHO cloud fraction</th>
+                                <th scope="col">UV aerosol absorbing index</th>
+                                <th scope="col">UV aerosol sensor altitude</th>
+                                <th scope="col">O3 column No. density</th>
+                                <th scope="col">O3 column No. density AMF</th>
+                                <th scope="col">O3 slant column No. density</th>
+                                <th scope="col">O3 effective temp</th>
+                                <th scope="col">O3 cloud fraction</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <th scope="row">User's input</th>
+                                {% if user_input%}
+                                <td>{{user_input[0]}}</td>
+                                <td>{{user_input[1]}}</td>
+                                <td>{{user_input[2]}}</td>
+                                <td>{{user_input[3]}}</td>
+                                <td>{{user_input[4]}}</td>
+                                <td>{{user_input[5]}}</td>
+                                <td>{{user_input[6]}}</td>
+                                <td>{{user_input[7]}}</td>
+                                <td>{{user_input[8]}}</td>
+                                <td>{{user_input[9]}}</td>
+                                <td>{{user_input[10]}}</td>
+                                <td>{{user_input[11]}}</td>
+                                <td>{{user_input[12]}}</td>
+                                <td>{{user_input[13]}}</td>
+                                <td>{{user_input[14]}}</td>
+                                <td>{{user_input[15]}}</td>
+                                <td>{{user_input[16]}}</td>
+                                <td>{{user_input[17]}}</td>
+                                <td>{{user_input[18]}}</td>
+                                <td>{{user_input[19]}}</td>
+                                <td>{{user_input[20]}}</td>
+                                <td>{{user_input[21]}}</td>
+                                <td>{{user_input[22]}}</td>
+                                <td>{{user_input[23]}}</td>
+                                <td>{{user_input[24]}}</td>
+                                <td>{{user_input[25]}}</td>
+                                <td>{{user_input[26]}}</td>
+                                <td>{{user_input[27]}}</td>
+                                <td>{{user_input[28]}}</td>
+                                <td>{{user_input[29]}}</td>
+                                <td>{{user_input[30]}}</td>
+                                <td>{{user_input[31]}}</td>
+                                <td>{{user_input[32]}}</td>
+                                <td>{{user_input[33]}}</td>
+                                {% endif %}
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                                              <!-- User predictior's predicted value division -->
+
+                <div class="table-responsive rounded col-3">
+                    <table class="table table-light">
+                        <thead>
+                            <tr class="text-center">
+                                <th scope="col">Your Predicted PM2.5</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="table-light">
+                                <td>{{user_prediction}}</th>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                                                <!-- User predictor's condition level depiction  -->
+
+                <div class="col-3">
+                    {% if user_prediction %}
+                    {% if user_prediction >= 0 and user_prediction <= 12.0 %} <div class="text-center rounded-pill text-white" style="background:green">Good</div>
+                    {% elif user_prediction > 12.1 and user_prediction <=44 %} <div class="text-center rounded-pill" style="color: yellow; font-size: 25px; font-weight: bold;"> <img style="height: 95px; border: 95px;" src="/static/happy.png"> Satisfactory</div>
+                    {% elif user_prediction > 44.1 and user_prediction <=55.4 %} <div class="text-center rounded-pill "style="color: orange; font-size: 25px; font-weight: bold;"> <img style="height: 95px; border: 95px;" src="/static/boy.png"> Moderate</div>
+                    {% elif user_prediction > 55.5 and user_prediction <=150.4 %} <div class="text-center rounded-pill "style="color: red; font-size: 25px; font-weight: bold;"><img style="height: 95px; border: 95px;"src="/static/medical-mask.png"> Poor</div>
+                    {% elif user_prediction > 150.5 and user_prediction <=250.4 %} <div class="text-center rounded-pill text-white"style="background:brown">Severe </div>
+                    {% else %}
+                    <img src="" alt="Easter Egg found 🥚🍳">
+                    {% endif %}
+                    {% endif %}
+                </div>
+
+            </div>
+        
+
+            <div class="text-center">
+
+                <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#exampleModal">
+                    Launch user predictor
+                </button>
+
+            </div>
+                                 <!-- User prediction modal window, by Bootstrap CSS -->
+        
+            <div class="container text-center">
+
+                <div class="modal fade" id="exampleModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
+                    aria-hidden="true">
+                    <div class="modal-dialog modal-lg modal-dialog-scrollable" role="document">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="exampleModalLabel">Press tab to jump into next input</h5>
+                                <img style="height: 50px; width: 50px;" src="/static/pollution.png">
+                            </div>
+                            <div class="modal-body">
+                                <div id="user_n_prediction" class='container rounded'>
+
+                                    <form action="/userreadings" method="post" id="userInput">
+                            
+                                        <input type="text" name="s4" placeholder="Humidity" required=""
+                                            class="input home-textinput3" />
+                                        <input type="text" name="s5" placeholder="Mean Temperature" required=""
+                                            class="input home-textinput3" />
+                                        <input type="text" name="s6" placeholder="SO2 column number density" required=""
+                                            class="input home-textinput3" />
+                                        <input type="text" name="s7" placeholder="SO2 column number density Air Mass Factor" required=""
+                                            class="input home-textinput3" />
+                                        <input type="text" name="s8" placeholder="SO2 slant column number density" required=""
+                                            class="input home-textinput3" />
+                                        <input type="text" name="s9" placeholder="SO2 cloud fraction" required=""
+                                            class="input home-textinput3" />
+                                        <input type="text" name="s10" placeholder="SO2 sensor azimuth angle" required=""
+                                            class="input home-textinput3" />
+                                        <input type="text" name="s11" placeholder="SO2 sensor zenith angle" required=""
+                                            class="input home-textinput3" />
+                                        <input type="text" name="s12" placeholder="SO2 solar azimuth angle" required=""
+                                            class="input home-textinput3" />
+                                        <input type="text" name="s13" placeholder="SO2 solar zenith angle" required=""
+                                            class="input home-textinput3" />
+                                        <input type="text" name="s14" placeholder="SO2 column number density 15km" required=""
+                                            class="input home-textinput3" />
+                                        <input type="text" name="s15" placeholder="CO column number density" required=""
+                                            class="input home-textinput3" />
+                                        <input type="text" name="s16" placeholder="CO_H2O column number density" required=""
+                                            class="input home-textinput3" />
+                                        <input type="text" name="s17" placeholder="CO cloud height" required=""
+                                            class="input home-textinput3" />
+                                        <input type="text" name="s18" placeholder="CO sensor altitude" required=""
+                                            class="input home-textinput3" />
+                                        <input type="text" name="s19" placeholder="NO2 column density" required=""
+                                            class="input home-textinput3" />
+                                        <input type="text" name="s20" placeholder="NO2 tropospheric column number density" required=""
+                                            class="input home-textinput3" />
+                                        <input type="text" name="s21" placeholder="NO2 stratoshperic column number density" required=""
+                                            class="input home-textinput3" />
+                                        <input type="text" name="s22" placeholder="NO2 slant column number density" required=""
+                                            class="input home-textinput3" />
+                                        <input type="text" name="s23" placeholder="NO2 tropopause pressure" required=""
+                                            class="input home-textinput3" />
+                                        <input type="text" name="s24" placeholder="NO2 absorbing aerosol index" required=""
+                                            class="input home-textinput3" />
+                                        <input type="text" name="s25" placeholder="NO2 cloud fraction" required=""
+                                            class="input home-textinput3" />
+                                        <input type="text" name="s26" placeholder="NO2 sensor altitude" required=""
+                                            class="input home-textinput3" />
+                                        <input type="text" name="s27" placeholder="Formaldehyde column number density" required=""
+                                            class="input home-textinput3" />
+                                        <input type="text" name="s28" placeholder="Formaldehyde column number density Air Mass Factor" required=""
+                                            class="input home-textinput3" />
+                                        <input type="text" name="s29" placeholder="Formaldehyde slant column number density" required=""
+                                            class="input home-textinput3" />
+                                        <input type="text" name="s30" placeholder="Formaldehyde cloud fraction" required=""
+                                            class="input home-textinput3" />
+                                        <input type="text" name="s31" placeholder="UV aerosol absorbing index" required=""
+                                            class="input home-textinput3" />
+                                        <input type="text" name="s32" placeholder="UV aerosol sensor altitude" required=""
+                                            class="input home-textinput3" />
+                                        <input type="text" name="s33" placeholder="O3 column number density" required=""
+                                            class="input home-textinput3" />
+                                        <input type="text" name="s34" placeholder="O3 column number density Air Mass Factor" required=""
+                                            class="input home-textinput3" />
+                                        <input type="text" name="s35" placeholder="O3 slant column number density" required=""
+                                            class="input home-textinput3" />
+                                        <input type="text" name="s36" placeholder="O3 effective temperature" required=""
+                                            class="input home-textinput3" />
+                                        <input type="text" name="s37" placeholder="O3 cloud fraction" required=""
+                                            class="input home-textinput3" />
+                            
+                                    </form>
+                            
+                            
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button form="userInput" id="async_reload_user_post" class="btn btn-success" type="submit">Predict using User's input
+                                </button>
+                                <button type="button" class="btn btn-danger" data-dismiss="modal">Close</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            
+
+                <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.3/umd/popper.min.js"
+                    integrity="sha384-vFJXuSJphROIrBnz7yo7oB41mKfc8JzQZiCq4NCceLEaO4IHwicKwpJf9c9IpFgh"
+                    crossorigin="anonymous">
+                </script>
+                <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/js/bootstrap.min.js"
+                    integrity="sha384-alpBpkh1PFOepccYVYDB4do5UnbKysX5WZXm3XxPqe5iKTfUKjNkCk9SaVuEZflJ"
+                    crossorigin="anonymous">
+                </script>
+            </div>
+
+
+        </div>
+
+    
+
+                                <!-- Map container, Dynamic map showing PM2.5 values  -->
+
+        <div style="padding-top: 20px; background-color: rgb(255, 255, 255);" id="map_container" class="container rounded mt-4">
+            <h4 style="padding-bottom: 20px;" class="text-center"> Dynamic PM2.5 readings around the world and its reference chart</h4>
+            <div class="row">
+                <div class="col-5">
+                    <div id='map' style='height:380px; background-color: rgb(255, 255, 255);'><h6 style="margin-left: 15%; font-size: 12px; margin-top: 30px;">Scroll to zoom map. Click hold n drag to move around the map.</h6>
+                    </div>
+                    <link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.7.5/leaflet.css" />
+                    <script src="http://cdn.leafletjs.com/leaflet-0.7.5/leaflet.js"></script>
+
+                    <script>
+                        var OSM_URL = 'http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+                        var OSM_ATTRIB = '&copy;  <a  href="http://openstreetmap.org/copyright">OpenStreetMap</a>  contributors';
+                        var osmLayer = L.tileLayer(OSM_URL, { attribution: OSM_ATTRIB });
+
+                        var WAQI_URL = "https://tiles.waqi.info/tiles/usepa-aqi/{z}/{x}/{y}.png?token=fb28d8c3b8db3ea317181009f69144afca355f9b";
+                        var WAQI_ATTR = 'Air  Quality  Tiles  &copy;  <a  href="http://waqi.info">waqi.info</a>';
+                        var waqiLayer = L.tileLayer(WAQI_URL, { attribution: WAQI_ATTR });
+
+                        var map = L.map('map').setView([20,50], 0);
+                        map.addLayer(osmLayer).addLayer(waqiLayer);  
+                    </script>
+                </div>
+
+                <div class="col-7">
+                    <img id="img_range" class="img-fluid" src="/static/Full lev new.jpg" alt="No image hehe">
+                </div>
+
+            </div>
+        </div>
+
+                                                <!-- Footer -->
+
+        <footer class="py-3 my-4 bg-secondary">
+            <ul class="nav justify-content-center border-bottom pb-3 mb-3">
+                <li class="nav-item"><a href="#" class="nav-link px-2 text-white">Home</a></li>
+                <li class="nav-item"><a href="#import_n_prediction" class="nav-link px-2 text-white">Prediction</a>
+                </li>
+                <li>
+                    <div class="btn-group dropend text-center">
+                        <button type="button" class="btn btn-link dropdown-toggle text-white" data-bs-toggle="dropdown" aria-expanded="false">
+                        Members
+                        </button>
+                        <ul class="dropdown-menu text-center bg-secondary" style="font-size:smaller; color: white;">
+                        <li>Adithyan A</li>
+                        <li>Ganga K.M</li>
+                        <li>Jyothi Nair</li>
+                        <li>N.Khadeeja</li>
+                        <li>Sreerag</li>
+                        <li>Vishnu R Nair</li>
+                        </ul>
+                    </div>
+                </li>
+                <li class="nav-item"><a href="https://www.flaticon.com/free-icons/air-pollution"
+                    class="nav-link px-2 text-white">Icon provider - Flaticon</a>
+            </li>
+            </ul>
+            <p class="text-center text-white">© 2023 DSA Batch 2, Project on Environmental pollution</p>
+            <p class="text-center text-white">pm2.5 predictor</p>
+    
+        </footer>
+
+    </div>
+
+</body>
+
+</html>
